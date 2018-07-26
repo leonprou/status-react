@@ -1,13 +1,13 @@
 import pytest
 
-from tests import marks, transaction_users, camera_access_error_text
+from tests import marks, transaction_users, camera_access_error_text, common_password
 from tests.base_test_case import SingleDeviceTestCase
 from views.sign_in_view import SignInView
 
 
 @marks.all
 @marks.account
-class TestWallet(SingleDeviceTestCase):
+class TestWalletManagement(SingleDeviceTestCase):
 
     @marks.testrail_id(3698)
     @marks.smoke_1
@@ -146,3 +146,49 @@ class TestWallet(SingleDeviceTestCase):
         send_transaction.chose_recipient_button.click()
         send_transaction.scan_qr_code_button.click()
         send_transaction.deny_button.wait_for_visibility_of_element(2)
+
+    @marks.testrail_id(3730)
+    def test_filter_transactions_history(self):
+        sign_in_view = SignInView(self.driver)
+        sign_in_view.create_user()
+        wallet_view = sign_in_view.wallet_button.click()
+        wallet_view.set_up_wallet()
+        address = wallet_view.get_wallet_address()
+
+        # get incoming transaction
+        self.network_api.get_donate(address=address)
+
+        # get outgoing transaction
+        send_transaction = wallet_view.send_transaction_button.click()
+        send_transaction.amount_edit_box.click()
+        send_amount = send_transaction.get_unique_amount()
+        send_transaction.amount_edit_box.set_value(send_amount)
+        send_transaction.confirm()
+        send_transaction.chose_recipient_button.click()
+        send_transaction.enter_recipient_address_button.click()
+        send_transaction.enter_recipient_address_input.set_value(transaction_users['C_USER']['address'])
+        send_transaction.done_button.click()
+        send_transaction.sign_transaction(common_password)
+
+        # filtering
+        transaction_history = wallet_view.transaction_history_button.click()
+        transaction_history.filters_button.click()
+        for filter_name in 'Outgoing', 'Pending', 'Failed':
+            transaction_history.filter_checkbox(filter_name).click()
+        wallet_view.done_button.click()
+        incoming_transaction = transaction_history.transactions_table.transaction_by_amount('0.1')
+        outgoing_transaction = transaction_history.transactions_table.transaction_by_amount(send_amount)
+        if not incoming_transaction.is_element_displayed():
+            self.errors.append('Incoming transaction is not shown after selecting incoming filter')
+        if outgoing_transaction.is_element_displayed():
+            self.errors.append('Outgoing transaction is shown after selecting incoming filter')
+
+        transaction_history.filters_button.click()
+        for filter_name in 'Outgoing', 'Incoming':
+            transaction_history.filter_checkbox(filter_name).click()
+        wallet_view.done_button.click()
+        if not outgoing_transaction.is_element_displayed():
+            self.errors.append('Outgoing transaction is not shown after selecting outgoing filter')
+        if incoming_transaction.is_element_displayed():
+            self.errors.append('Incoming transaction is shown after selecting outgoing filter')
+        self.verify_no_errors()

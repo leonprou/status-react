@@ -71,10 +71,13 @@ class TransactionTable(BaseElement):
     def get_first_transaction(self):
         return self.TransactionElement.by_index(self.driver, 0)
 
+    def transaction_by_amount(self, amount: str):
+        return self.TransactionElement.by_amount(self.driver, amount=amount.replace(',', '.'))
+
     def find_transaction(self, amount: str) -> TransactionElement:
+        element = self.transaction_by_amount(amount=amount)
         for i in range(9):
             try:
-                element = self.TransactionElement.by_amount(self.driver, amount=amount.replace(',', '.'))
                 element.find_element()
                 return element
             except NoSuchElementException:
@@ -86,28 +89,25 @@ class TransactionTable(BaseElement):
         self.driver.swipe(500, 500, 500, 1000)
 
 
-class HistoryTab(BaseButton):
+class FiltersButton(BaseButton):
     def __init__(self, driver):
-        super(HistoryTab, self).__init__(driver)
-        self.locator = self.Locator.accessibility_id('history-button')
+        super(FiltersButton, self).__init__(driver)
+        self.locator = self.Locator.accessibility_id('filters-button')
 
 
-class UnsignedTab(BaseButton):
-    def __init__(self, driver):
-        super(UnsignedTab, self).__init__(driver)
-        self.locator = self.Locator.accessibility_id('unsigned-transactions-button')
-
-    class SignButton(BaseButton):
-        def __init__(self, driver):
-            super(UnsignedTab.SignButton, self).__init__(driver)
-            self.locator = self.Locator.accessibility_id('sign-button')
+class FilterCheckbox(BaseButton):
+    def __init__(self, driver, filter_name):
+        super(FilterCheckbox, self).__init__(driver)
+        self.locator = self.Locator.xpath_selector(
+            "//*[@text='%s']/following-sibling::*[@content-desc='checkbox']" % filter_name)
 
 
 class TransactionsView(BaseView):
     def __init__(self, driver):
         super(TransactionsView, self).__init__(driver)
         self.driver = driver
-        self.history_tab = HistoryTab(self.driver)
-        self.unsigned_tab = UnsignedTab(self.driver)
-        self.sign_button = UnsignedTab.SignButton(self.driver)
+        self.filters_button = FiltersButton(self.driver)
         self.transactions_table = TransactionTable(self.driver)
+
+    def filter_checkbox(self, filter_name):
+        return FilterCheckbox(self.driver, filter_name)
