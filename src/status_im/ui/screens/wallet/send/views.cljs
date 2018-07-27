@@ -56,7 +56,7 @@
          :accessibility-label    :enter-password-input
          :auto-capitalize        :none}]
        (when wrong-password?
-         [tooltip/tooltip (i18n/label :t/wrong-password)])]]]))
+         [tooltip/tooltip (i18n/label :t/wrong-password) {:bottom-value -20}])]]]))
 
 ;; "Cancel" and "Sign Transaction >" buttons, signing with password
 (defview signing-buttons [spinning? cancel-handler sign-handler sign-label]
